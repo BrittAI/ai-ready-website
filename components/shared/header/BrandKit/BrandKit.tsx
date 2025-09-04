@@ -45,8 +45,7 @@ export default function HeaderBrandKit() {
           }
         }}
       >
-        <FirecrawlIcon className="size-28 -top-2 relative" />
-        <Logo />
+        <span className="text-label-large text-accent-black font-medium">AI Ready Website</span>
       </Link>
 
       <AnimatePresence initial={false} mode="popLayout">

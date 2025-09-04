@@ -19,7 +19,10 @@ import {
   FileCode,
   Network,
   Info,
-  Eye
+  Eye,
+  Share2,
+  Copy,
+  Check
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import ScoreChart from "./ScoreChart";
@@ -57,6 +60,9 @@ export default function ControlPanel({
   const [showAIAnalysis, setShowAIAnalysis] = useState(false);
   const [aiInsights, setAiInsights] = useState<CheckItem[]>([]);
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [isGeneratingShareUrl, setIsGeneratingShareUrl] = useState(false);
+  const [shareUrlCopied, setShareUrlCopied] = useState(false);
   const [combinedChecks, setCombinedChecks] = useState<CheckItem[]>([]);
   const [checks, setChecks] = useState<CheckItem[]>([
     {
@@ -347,6 +353,51 @@ export default function ControlPanel({
     return "text-accent-black";
   };
 
+  // Generate shareable report
+  const handleShareReport = async () => {
+    if (!analysisData || !url) return;
+    
+    setIsGeneratingShareUrl(true);
+    
+    try {
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url,
+          analysisData,
+          overallScore: analysisData.overallScore
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setShareUrl(data.shareUrl);
+      } else {
+        alert('Failed to generate share link. Please try again.');
+      }
+    } catch (error) {
+      console.error('Share report error:', error);
+      alert('Failed to generate share link. Please try again.');
+    } finally {
+      setIsGeneratingShareUrl(false);
+    }
+  };
+
+  // Copy share URL to clipboard
+  const handleCopyShareUrl = async () => {
+    if (!shareUrl) return;
+    
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareUrlCopied(true);
+      setTimeout(() => setShareUrlCopied(false), 2000);
+    } catch (error) {
+      console.error('Copy failed:', error);
+      alert('Failed to copy link. Please copy manually: ' + shareUrl);
+    }
+  };
 
   return (
     <motion.div
@@ -665,7 +716,8 @@ export default function ControlPanel({
                   ['robots-txt', 'sitemap', 'llms-txt'].includes(check.id) ? 'domain' : 'page',
                 details: check.details,
                 recommendation: check.recommendation,
-                actionItems: check.actionItems
+                actionItems: check.actionItems,
+                codeExample: check.codeExample
               }))}
           />
         </motion.div>
@@ -685,6 +737,79 @@ export default function ControlPanel({
           >
             Analyze Another Site
           </button>
+          
+          {/* Share Report Button */}
+          <div className="relative">
+            <button
+              onClick={handleShareReport}
+              disabled={isGeneratingShareUrl}
+              className="px-20 py-10 bg-heat-100 hover:bg-heat-150 disabled:bg-black-alpha-8 text-white rounded-8 text-label-medium transition-all flex items-center gap-8"
+            >
+              {isGeneratingShareUrl ? (
+                <>
+                  <div className="w-14 h-14 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-16 h-16" />
+                  Share Report
+                </>
+              )}
+            </button>
+            
+            {/* Share URL Modal */}
+            <AnimatePresence>
+              {shareUrl && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-8 bg-white border border-black-alpha-8 rounded-12 p-16 w-320 shadow-lg z-50"
+                >
+                  <div className="text-label-medium text-accent-black mb-8">
+                    Your shareable report is ready!
+                  </div>
+                  
+                  <div className="flex items-center gap-8 mb-12">
+                    <input
+                      type="text"
+                      value={shareUrl}
+                      readOnly
+                      className="flex-1 px-12 py-8 border border-black-alpha-8 rounded-6 text-mono-small bg-black-alpha-2"
+                    />
+                    <button
+                      onClick={handleCopyShareUrl}
+                      className="px-12 py-8 bg-heat-100 hover:bg-heat-150 text-white rounded-6 flex items-center gap-4 transition-colors"
+                    >
+                      {shareUrlCopied ? (
+                        <>
+                          <Check className="w-12 h-12" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-12 h-12" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="text-mono-x-small text-black-alpha-48">
+                    Share this link with clients or team members to showcase your website's AI readiness analysis.
+                  </div>
+                  
+                  <button
+                    onClick={() => setShareUrl(null)}
+                    className="absolute top-8 right-8 p-4 hover:bg-black-alpha-4 rounded-4 transition-colors"
+                  >
+                    <Check className="w-12 h-12 text-black-alpha-32" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           {true && ( 
             <button 
               onClick={async () => {

@@ -12,6 +12,7 @@ interface CheckResult {
   score: number;
   details: string;
   recommendation: string;
+  actionItems?: string[];
 }
 
 // Calculate Flesch-Kincaid readability score
@@ -57,13 +58,292 @@ function extractTextContent(html: string): string {
   return cleanHtml.replace(/\s+/g, ' ').trim();
 }
 
+// Generate specific, actionable recommendations
+function getSpecificRecommendations(checkId: string, issues: any, data?: any): { recommendation: string; actionItems: string[] } {
+  switch (checkId) {
+    case 'heading-structure':
+      if (issues.h1Count === 0) {
+        return {
+          recommendation: 'Add exactly one H1 tag to clearly define your main topic for AI systems',
+          actionItems: [
+            'Add a single <h1> tag with your primary page topic',
+            'Use H2 tags for main sections, H3 for subsections',
+            'Ensure logical hierarchy: H1 → H2 → H3 (don\'t skip levels)',
+            'Keep headings descriptive and keyword-rich'
+          ]
+        };
+      } else if (issues.h1Count > 1) {
+        return {
+          recommendation: 'Reduce to exactly one H1 tag to avoid confusing AI about your main topic',
+          actionItems: [
+            `Convert ${issues.h1Count - 1} extra H1 tags to H2 or H3`,
+            'Keep the most important topic as your single H1',
+            'Use H2 tags for equal-weight sections',
+            'Maintain logical heading hierarchy'
+          ]
+        };
+      } else {
+        return {
+          recommendation: 'Fix heading hierarchy gaps to help AI understand your content structure',
+          actionItems: [
+            'Don\'t skip heading levels (e.g., H1 → H3)',
+            'Use sequential heading levels (H1 → H2 → H3)',
+            'Group related content under appropriate heading levels',
+            'Make headings descriptive of the content that follows'
+          ]
+        };
+      }
+      
+    case 'readability':
+      const score = data?.score || 0;
+      if (score < 30) {
+        return {
+          recommendation: 'Significantly simplify your writing to make it more accessible to AI and users',
+          actionItems: [
+            'Break long sentences into shorter ones (aim for 15-20 words)',
+            'Replace complex words with simpler alternatives',
+            'Use active voice instead of passive voice',
+            'Add bullet points and numbered lists',
+            'Include more white space and paragraph breaks'
+          ],
+        };
+      } else {
+        return {
+          recommendation: 'Improve readability with clearer structure and simpler language',
+          actionItems: [
+            'Shorten sentences where possible',
+            'Use more common words when available',
+            'Add subheadings to break up long sections',
+            'Include bullet points for lists',
+            'Use shorter paragraphs (3-4 sentences max)'
+          ]
+        };
+      }
+      
+    case 'meta-tags':
+      const missing = [];
+      if (!data?.hasTitle) missing.push('title');
+      if (!data?.hasDescription) missing.push('description');
+      if (!data?.hasAuthor) missing.push('author');
+      
+      return {
+        recommendation: 'Add essential metadata to help AI understand your page context and purpose',
+        actionItems: [
+          missing.includes('title') ? 'Add a descriptive <title> tag (50-60 characters)' : '',
+          missing.includes('description') ? 'Add a meta description (120-160 characters)' : '',
+          missing.includes('author') ? 'Add author information for content attribution' : '',
+          'Include Open Graph tags for better social sharing',
+          'Add structured data (JSON-LD) for rich snippets'
+        ].filter(Boolean),
+      };
+      
+    case 'semantic-html':
+      return {
+        recommendation: 'Use semantic HTML5 elements to help AI understand your content structure and meaning',
+        actionItems: [
+          'Replace <div class="header"> with <header>',
+          'Use <main> for primary content area',
+          'Wrap navigation in <nav> elements',
+          'Use <article> for standalone content pieces',
+          'Add <section> for distinct content areas',
+          'Include <aside> for sidebar content'
+        ],
+      };
+      
+    case 'accessibility':
+      return {
+        recommendation: 'Improve accessibility to help both users and AI systems understand your content',
+        actionItems: [
+          data?.imgCount > 0 ? 'Add descriptive alt text to all images' : '',
+          'Add ARIA labels to interactive elements',
+          'Include proper heading hierarchy',
+          'Ensure sufficient color contrast',
+          'Add lang attribute to html tag',
+          'Use semantic HTML elements'
+        ].filter(Boolean),
+        example: `<!-- Image accessibility -->
+<img src="chart.png" alt="Monthly sales increased 25% from January to March 2024">
+
+<!-- Interactive elements -->
+<button aria-label="Close dialog">×</button>
+<input type="search" aria-label="Search products">
+
+<!-- Language declaration -->
+<html lang="en">`
+      };
+      
+    case 'robots-txt':
+      return {
+        recommendation: 'Create a robots.txt file to guide AI crawlers and search engines',
+        actionItems: [
+          'Create /robots.txt in your website root',
+          'Allow access for AI crawlers (GPTBot, CCBot, etc.)',
+          'Include sitemap location',
+          'Block sensitive directories if needed'
+        ],
+        example: `User-agent: *
+Allow: /
+
+# Allow AI crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# Include sitemap
+Sitemap: https://yoursite.com/sitemap.xml
+
+# Block admin areas
+Disallow: /admin/
+Disallow: /private/`
+      };
+      
+    case 'sitemap':
+      return {
+        recommendation: 'Generate an XML sitemap to help AI systems discover and index your content',
+        actionItems: [
+          'Create an XML sitemap with all important pages',
+          'Include lastmod dates for content freshness',
+          'Add priority values for important pages',
+          'Submit sitemap to search engines',
+          'Reference sitemap in robots.txt'
+        ],
+        example: `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://yoursite.com/</loc>
+    <lastmod>2024-01-15</lastmod>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://yoursite.com/blog/</loc>
+    <lastmod>2024-01-14</lastmod>
+    <priority>0.8</priority>
+  </url>
+</urlset>`
+      };
+      
+    case 'llms-txt':
+      return {
+        recommendation: 'Add an llms.txt file to explicitly define how AI should interact with your content',
+        actionItems: [
+          'Create /llms.txt in your website root',
+          'Specify which content AI can use',
+          'Include usage permissions and restrictions',
+          'Add contact information for questions',
+          'Reference your terms of service'
+        ],
+        example: `# llms.txt - AI Usage Guidelines
+
+## Permissions
+- AI systems may crawl and index this site
+- Content may be used for training with attribution
+- Please respect robots.txt directives
+
+## Restrictions  
+- Do not use personal information in training data
+- Respect copyright notices on individual pages
+- Commercial use requires permission
+
+## Contact
+For questions about AI usage: ai-questions@yoursite.com
+
+## Terms
+Full terms: https://yoursite.com/terms`
+      };
+      
+    case 'faq-structure':
+      const faqScore = data?.score || 0;
+      if (faqScore < 30) {
+        return {
+          recommendation: 'Add a comprehensive FAQ section to provide clear question-answer pairs for AI training',
+          actionItems: [
+            'Create a dedicated FAQ page or section',
+            'Structure questions with clear, descriptive headings',
+            'Use HTML details/summary elements for expandable FAQs',
+            'Add FAQ schema markup for better search visibility',
+            'Include 10+ commonly asked questions about your topic'
+          ],
+        };
+      } else {
+        return {
+          recommendation: 'Enhance your existing FAQ structure with schema markup and more comprehensive questions',
+          actionItems: [
+            'Add FAQ schema markup to existing questions',
+            'Expand FAQ with more detailed answers',
+            'Group related questions into categories',
+            'Add search functionality for large FAQ sections'
+          ]
+        };
+      }
+      
+    case 'content-structure':
+      const structureScore = data?.score || 0;
+      if (structureScore < 50) {
+        return {
+          recommendation: 'Improve content organization to help AI understand your knowledge structure',
+          actionItems: [
+            'Add a table of contents for long articles',
+            'Create logical section hierarchies with proper headings',
+            'Implement breadcrumb navigation',
+            'Add "Related Articles" sections with internal links',
+            'Use clear section dividers and navigation aids'
+          ],
+        };
+      } else {
+        return {
+          recommendation: 'Your content structure is good - consider adding advanced organization features',
+          actionItems: [
+            'Add jump-to-section navigation for very long content',
+            'Implement content categorization and tagging',
+            'Consider adding a site-wide content index'
+          ]
+        };
+      }
+      
+    case 'topical-authority':
+      const authorityScore = data?.score || 0;
+      if (authorityScore < 60) {
+        return {
+          recommendation: 'Establish stronger topical authority and expertise signals',
+          actionItems: [
+            'Add detailed author bios with credentials',
+            'Include publication and last-updated dates',
+            'Add citations and references to external sources',
+            'Create comprehensive, in-depth content',
+            'Show expertise through detailed explanations and examples'
+          ],
+        };
+      } else {
+        return {
+          recommendation: 'Strong authority signals detected - maintain and expand your expertise',
+          actionItems: [
+            'Keep content updated with latest industry changes',
+            'Continue building author credibility',
+            'Add more comprehensive references and citations'
+          ]
+        };
+      }
+      
+    default:
+      return {
+        recommendation: 'Improve this aspect for better AI compatibility',
+        actionItems: ['Review and optimize this metric']
+      };
+  }
+}
+
 async function analyzeHTML(html: string, metadata: any, url: string): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
   
-  console.log('[AI-READY] HTML Check 1/5: Extracting text content...');
+  console.log('[AI-READY] HTML Check 1/8: Extracting text content...');
   const textContent = extractTextContent(html);
   
-  console.log('[AI-READY] HTML Check 2/5: Analyzing heading structure...');
+  console.log('[AI-READY] HTML Check 2/8: Analyzing heading structure...');
   // 1. Heading Structure (High Signal)
   const h1Count = (html.match(/<h1[^>]*>/gi) || []).length;
   const headings = html.match(/<h([1-6])[^>]*>/gi) || [];
@@ -91,18 +371,19 @@ async function analyzeHTML(html: string, metadata: any, url: string): Promise<Ch
   
   headingScore = Math.max(0, headingScore);
   
+  const headingRec = getSpecificRecommendations('heading-structure', { h1Count, headingIssues }, { score: headingScore });
+  
   results.push({
     id: 'heading-structure',
     label: 'Heading Hierarchy',
     status: headingScore >= 80 ? 'pass' : headingScore >= 50 ? 'warning' : 'fail',
     score: headingScore,
     details: headingIssues.length > 0 ? headingIssues.join(', ') : `Perfect hierarchy with ${h1Count} H1 and logical structure`,
-    recommendation: headingScore < 80 ? 
-      'Use exactly one H1 and maintain logical heading hierarchy (H1→H2→H3)' : 
-      'Excellent heading structure for AI comprehension'
+    recommendation: headingRec.recommendation,
+    actionItems: headingRec.actionItems,
   });
   
-  console.log('[AI-READY] HTML Check 3/5: Calculating readability score...');
+  console.log('[AI-READY] HTML Check 3/8: Calculating readability score...');
   // 3. Readability Score (High Signal)
   const readabilityScore = calculateReadability(textContent);
   let readabilityStatus: 'pass' | 'warning' | 'fail' = 'pass';
@@ -127,18 +408,19 @@ async function analyzeHTML(html: string, metadata: any, url: string): Promise<Ch
     readabilityDetails = `Very difficult (Flesch: ${Math.round(readabilityScore)})`;
   }
   
+  const readabilityRec = getSpecificRecommendations('readability', { readabilityScore }, { score: readabilityScore });
+  
   results.push({
     id: 'readability',
     label: 'Content Readability',
     status: readabilityStatus,
     score: normalizedScore,
     details: readabilityDetails,
-    recommendation: normalizedScore < 80 ? 
-      'Simplify sentences and use clearer language for better AI comprehension' : 
-      'Content is clearly written and AI-friendly'
+    recommendation: readabilityRec.recommendation,
+    actionItems: readabilityRec.actionItems,
   });
   
-  console.log('[AI-READY] HTML Check 4/5: Checking metadata quality...');
+  console.log('[AI-READY] HTML Check 4/8: Checking metadata quality...');
   // 4. Enhanced Metadata Quality (Medium Signal)
   const hasOgTitle = metadata?.ogTitle || metadata?.title || html.includes('og:title') || html.includes('<title');
   const hasOgDescription = metadata?.ogDescription || metadata?.description || html.includes('og:description') || html.includes('name="description"');
@@ -185,18 +467,24 @@ async function analyzeHTML(html: string, metadata: any, url: string): Promise<Ch
   
   // Cap at 100
   metaScore = Math.min(100, metaScore);
+  
+  const metaRec = getSpecificRecommendations('meta-tags', { metaScore }, { 
+    hasTitle: hasOgTitle, 
+    hasDescription: hasOgDescription, 
+    hasAuthor: hasAuthor 
+  });
+  
   results.push({
     id: 'meta-tags',
     label: 'Metadata Quality',
     status: metaScore >= 70 ? 'pass' : metaScore >= 40 ? 'warning' : 'fail',
     score: metaScore,
     details: metaDetails.length > 0 ? metaDetails.join(', ') : 'Missing critical metadata',
-    recommendation: metaScore < 70 ? 
-      'Add title, description (70-160 chars), author, and publish date metadata' : 
-      'Metadata provides excellent context for AI'
+    recommendation: metaRec.recommendation,
+    actionItems: metaRec.actionItems,
   });
   
-  console.log('[AI-READY] HTML Check 5/5: Checking semantic HTML and accessibility...');
+  console.log('[AI-READY] HTML Check 5/8: Checking semantic HTML and accessibility...');
   // 6. Semantic HTML (Medium Signal)
   const semanticTags = ['<article', '<nav', '<main', '<section', '<header', '<footer', '<aside'];
   const semanticCount = semanticTags.filter(tag => html.includes(tag)).length;
@@ -210,13 +498,16 @@ async function analyzeHTML(html: string, metadata: any, url: string): Promise<Ch
     (hasAriaRoles ? 20 : 0) + 
     (isModernFramework ? 20 : 0));
   
+  const semanticRec = getSpecificRecommendations('semantic-html', { semanticCount }, { score: semanticScore });
+  
   results.push({
     id: 'semantic-html',
     label: 'Semantic HTML',
     status: semanticScore >= 80 ? 'pass' : semanticScore >= 40 ? 'warning' : 'fail',
     score: semanticScore,
     details: `Found ${semanticCount} semantic HTML5 elements`,
-    recommendation: semanticScore < 80 ? 'Use more semantic HTML5 elements (article, nav, main, section, etc.)' : 'Excellent use of semantic HTML'
+    recommendation: semanticRec.recommendation,
+    actionItems: semanticRec.actionItems,
   });
   
   // 7. Check accessibility (Lower Signal but still important)
@@ -238,15 +529,271 @@ async function analyzeHTML(html: string, metadata: any, url: string): Promise<Ch
     (hasRole ? 15 : 0) + 
     (hasLangAttribute ? 15 : 0));
   
+  const accessibilityRec = getSpecificRecommendations('accessibility', { accessibilityScore }, { 
+    imgCount, 
+    altTextRatio, 
+    hasAriaLabels 
+  });
+  
   results.push({
     id: 'accessibility',
     label: 'Accessibility',
     status: accessibilityScore >= 80 ? 'pass' : accessibilityScore >= 50 ? 'warning' : 'fail',
     score: Math.round(accessibilityScore),
     details: `${Math.round(altTextRatio)}% images have alt text, ARIA labels: ${hasAriaLabels ? 'Yes' : 'No'}`,
-    recommendation: accessibilityScore < 80 ? 'Add alt text to all images and use ARIA labels for interactive elements' : 'Good accessibility implementation'
+    recommendation: accessibilityRec.recommendation,
+    actionItems: accessibilityRec.actionItems,
   });
+  
+  // NEW CATEGORIES: Add the expanded analysis
+  console.log('[AI-READY] HTML Check 6/8: Analyzing FAQ structure...');
+  const faqAnalysis = analyzeFAQStructure(html, textContent);
+  results.push(faqAnalysis);
+  
+  console.log('[AI-READY] HTML Check 7/8: Analyzing content structure...');
+  const structureAnalysis = analyzeContentStructure(html, textContent);
+  results.push(structureAnalysis);
+  
+  console.log('[AI-READY] HTML Check 8/8: Analyzing topical authority...');
+  const authorityAnalysis = analyzeTopicalAuthority(html, metadata, textContent);
+  results.push(authorityAnalysis);
+  
   return results;
+}
+
+// NEW: Analyze FAQ structure and Q&A patterns
+function analyzeFAQStructure(html: string, textContent: string): CheckResult {
+  
+  let score = 0;
+  let details: string[] = [];
+  
+  // Check for FAQ schema markup
+  const hasFAQSchema = html.includes('schema.org/FAQPage') || html.includes('schema.org/Question');
+  if (hasFAQSchema) {
+    score += 30;
+    details.push('FAQ schema markup found');
+  }
+  
+  // Check for HTML5 details/summary elements
+  const detailsCount = (html.match(/<details[^>]*>/gi) || []).length;
+  if (detailsCount > 0) {
+    score += Math.min(25, detailsCount * 5);
+    details.push(`${detailsCount} expandable FAQ items found`);
+  }
+  
+  // Check for FAQ-style content patterns
+  const faqPatterns = [
+    /what\s+is\s+[^.?]+\?/gi,
+    /how\s+to\s+[^.?]+\?/gi,
+    /why\s+does\s+[^.?]+\?/gi,
+    /when\s+should\s+[^.?]+\?/gi,
+    /where\s+can\s+[^.?]+\?/gi,
+    /frequently\s+asked\s+questions?/gi,
+    /common\s+questions?/gi,
+    /q&a|q\s*&\s*a/gi
+  ];
+  
+  let questionCount = 0;
+  faqPatterns.forEach(pattern => {
+    const matches = textContent.match(pattern) || [];
+    questionCount += matches.length;
+  });
+  
+  if (questionCount > 0) {
+    score += Math.min(35, questionCount * 3);
+    details.push(`${questionCount} question-answer patterns detected`);
+  }
+  
+  // Check for FAQ section headers
+  const faqHeaders = html.match(/<h[1-6][^>]*>.*?(faq|question|help|support).*?<\/h[1-6]>/gi) || [];
+  if (faqHeaders.length > 0) {
+    score += 10;
+    details.push('FAQ section headers found');
+  }
+  
+  score = Math.min(100, score);
+  
+  const faqRec = getSpecificRecommendations('faq-structure', {}, { score });
+  
+  return {
+    id: 'faq-structure',
+    label: 'FAQ & Q&A Structure',
+    status: score >= 70 ? 'pass' : score >= 40 ? 'warning' : 'fail',
+    score,
+    details: details.length > 0 ? details.join(', ') : 'No FAQ structure detected',
+    recommendation: faqRec.recommendation,
+    actionItems: faqRec.actionItems,
+  };
+}
+
+// NEW: Analyze content structure and organization
+function analyzeContentStructure(html: string, textContent: string): CheckResult {
+  
+  let score = 0;
+  let details: string[] = [];
+  
+  // Check for table of contents
+  const tocPatterns = [
+    /table\s+of\s+contents/gi,
+    /<nav[^>]*class[^>]*toc/gi,
+    /<ol[^>]*class[^>]*contents/gi,
+    /<ul[^>]*class[^>]*contents/gi
+  ];
+  
+  const hasTOC = tocPatterns.some(pattern => html.match(pattern));
+  if (hasTOC) {
+    score += 25;
+    details.push('Table of contents found');
+  }
+  
+  // Check for breadcrumb navigation
+  const breadcrumbPatterns = [
+    /breadcrumb/gi,
+    /<nav[^>]*aria-label[^>]*breadcrumb/gi,
+    /schema\.org\/BreadcrumbList/gi
+  ];
+  
+  const hasBreadcrumbs = breadcrumbPatterns.some(pattern => html.match(pattern));
+  if (hasBreadcrumbs) {
+    score += 20;
+    details.push('Breadcrumb navigation found');
+  }
+  
+  // Check for internal linking
+  const internalLinks = (html.match(/<a[^>]+href=["'][^"']*#[^"']*["'][^>]*>/gi) || []).length;
+  if (internalLinks > 0) {
+    score += Math.min(20, internalLinks * 2);
+    details.push(`${internalLinks} internal anchor links found`);
+  }
+  
+  // Check for related content sections
+  const relatedPatterns = [
+    /related\s+(articles?|posts?|content|links?)/gi,
+    /see\s+also/gi,
+    /further\s+reading/gi,
+    /more\s+resources?/gi
+  ];
+  
+  const hasRelated = relatedPatterns.some(pattern => textContent.match(pattern));
+  if (hasRelated) {
+    score += 15;
+    details.push('Related content sections found');
+  }
+  
+  // Check for content sectioning with proper headings
+  const headings = html.match(/<h[1-6][^>]*>/gi) || [];
+  if (headings.length >= 3) {
+    score += Math.min(20, headings.length * 2);
+    details.push(`${headings.length} section headings for structure`);
+  }
+  
+  score = Math.min(100, score);
+  
+  const structureRec = getSpecificRecommendations('content-structure', {}, { score });
+  
+  return {
+    id: 'content-structure',
+    label: 'Content Organization',
+    status: score >= 70 ? 'pass' : score >= 50 ? 'warning' : 'fail',
+    score,
+    details: details.length > 0 ? details.join(', ') : 'Limited content organization detected',
+    recommendation: structureRec.recommendation,
+    actionItems: structureRec.actionItems,
+  };
+}
+
+// NEW: Analyze topical authority and expertise signals
+function analyzeTopicalAuthority(html: string, metadata: any, textContent: string): CheckResult {
+  
+  let score = 0;
+  let details: string[] = [];
+  
+  // Check for author information
+  const authorPatterns = [
+    /author|by\s+[A-Z][a-z]+\s+[A-Z][a-z]+/gi,
+    /<meta[^>]+name=["']author["'][^>]*>/gi,
+    /rel=["']author["']/gi,
+    /itemprop=["']author["']/gi
+  ];
+  
+  const hasAuthor = authorPatterns.some(pattern => html.match(pattern)) || 
+                   metadata?.author || 
+                   html.includes('schema.org/Person');
+  
+  if (hasAuthor) {
+    score += 25;
+    details.push('Author information found');
+  }
+  
+  // Check for publication dates
+  const datePatterns = [
+    /<time[^>]*datetime/gi,
+    /published|updated|modified/gi,
+    /<meta[^>]+property=["']article:(published_time|modified_time)["'][^>]*>/gi
+  ];
+  
+  const hasDate = datePatterns.some(pattern => html.match(pattern));
+  if (hasDate) {
+    score += 20;
+    details.push('Publication dates found');
+  }
+  
+  // Check for citations and references
+  const citationPatterns = [
+    /references?|sources?|citations?/gi,
+    /<a[^>]+rel=["']external["'][^>]*>/gi,
+    /according\s+to/gi,
+    /research\s+(shows?|indicates?)/gi
+  ];
+  
+  let citationCount = 0;
+  citationPatterns.forEach(pattern => {
+    const matches = textContent.match(pattern) || [];
+    citationCount += matches.length;
+  });
+  
+  if (citationCount > 0) {
+    score += Math.min(25, citationCount * 3);
+    details.push(`${citationCount} citations/references found`);
+  }
+  
+  // Check for content depth (word count as proxy)
+  const wordCount = textContent.split(/\s+/).length;
+  if (wordCount > 1500) {
+    score += 15;
+    details.push(`In-depth content (${wordCount} words)`);
+  } else if (wordCount > 800) {
+    score += 10;
+    details.push(`Good content length (${wordCount} words)`);
+  }
+  
+  // Check for expertise indicators
+  const expertisePatterns = [
+    /certified|expert|specialist|professional/gi,
+    /years?\s+of\s+experience/gi,
+    /PhD|doctorate|master's|bachelor's/gi,
+    /industry\s+(leader|expert|veteran)/gi
+  ];
+  
+  const hasExpertise = expertisePatterns.some(pattern => textContent.match(pattern));
+  if (hasExpertise) {
+    score += 15;
+    details.push('Expertise indicators found');
+  }
+  
+  score = Math.min(100, score);
+  
+  const authorityRec = getSpecificRecommendations('topical-authority', {}, { score });
+  
+  return {
+    id: 'topical-authority',
+    label: 'Topical Authority',
+    status: score >= 80 ? 'pass' : score >= 60 ? 'warning' : 'fail',
+    score,
+    details: details.length > 0 ? details.join(', ') : 'Limited authority signals detected',
+    recommendation: authorityRec.recommendation,
+    actionItems: authorityRec.actionItems,
+  };
 }
 
 async function checkAdditionalFiles(domain: string): Promise<{ robots: CheckResult, sitemap: CheckResult, llms: CheckResult }> {
@@ -268,31 +815,37 @@ async function checkAdditionalFiles(domain: string): Promise<{ robots: CheckResu
   };
   
   // Define default results
+  const defaultRobotsRec = getSpecificRecommendations('robots-txt', {}, {});
   let robotsCheck: CheckResult = {
     id: 'robots-txt',
     label: 'Robots.txt',
     status: 'fail',
     score: 0,
     details: 'No robots.txt file found',
-    recommendation: 'Create a robots.txt file with AI crawler directives'
+    recommendation: defaultRobotsRec.recommendation,
+    actionItems: defaultRobotsRec.actionItems,
   };
   
+  const defaultSitemapRec = getSpecificRecommendations('sitemap', {}, {});
   let sitemapCheck: CheckResult = {
     id: 'sitemap',
     label: 'Sitemap',
     status: 'fail',
     score: 0,
     details: 'No sitemap.xml found',
-    recommendation: 'Generate and submit an XML sitemap'
+    recommendation: defaultSitemapRec.recommendation,
+    actionItems: defaultSitemapRec.actionItems,
   };
   
+  const defaultLlmsRec = getSpecificRecommendations('llms-txt', {}, {});
   let llmsCheck: CheckResult = {
     id: 'llms-txt',
     label: 'LLMs.txt',
     status: 'fail',
     score: 0,
     details: 'No llms.txt file found',
-    recommendation: 'Add an llms.txt file to define AI usage permissions'
+    recommendation: defaultLlmsRec.recommendation,
+    actionItems: defaultLlmsRec.actionItems,
   };
   
   // Store robots.txt content for sitemap extraction
@@ -319,13 +872,19 @@ async function checkAdditionalFiles(domain: string): Promise<{ robots: CheckResu
           const hasSitemap = sitemapUrls.length > 0;
           const score = (hasUserAgent ? 60 : 0) + (hasSitemap ? 40 : 0);
           
+          const robotsRec = score >= 80 ? 
+            { recommendation: 'Robots.txt properly configured for AI crawlers', actionItems: ['Monitor crawler behavior and update as needed'],  undefined } :
+            getSpecificRecommendations('robots-txt', {}, {});
+          
           robotsCheck = {
             id: 'robots-txt',
             label: 'Robots.txt',
             status: score >= 80 ? 'pass' : score >= 40 ? 'warning' : 'fail',
             score,
             details: `Robots.txt found${hasSitemap ? ` with ${sitemapUrls.length} sitemap reference(s)` : ''}`,
-            recommendation: score < 80 ? 'Add sitemap reference to robots.txt' : 'Robots.txt properly configured'
+            recommendation: robotsRec.recommendation,
+            actionItems: robotsRec.actionItems,
+            example: robotsRec.example
           };
         }
       })
@@ -355,7 +914,9 @@ async function checkAdditionalFiles(domain: string): Promise<{ robots: CheckResu
                 status: 'pass',
                 score: 100,
                 details: `${filename} file found with AI usage guidelines`,
-                recommendation: 'Great! You have defined AI usage permissions'
+                recommendation: 'Great! You have defined AI usage permissions',
+                actionItems: ['Review and update AI usage guidelines periodically', 'Monitor for compliance with AI training policies'],
+                 undefined
               };
             }
           }
@@ -409,7 +970,9 @@ async function checkAdditionalFiles(domain: string): Promise<{ robots: CheckResu
             status: 'pass',
             score: 100,
             details: `Valid XML sitemap found${fromRobots ? ' (referenced in robots.txt)' : ` at ${sitemapUrl.replace(cleanUrl, '')}`}`,
-            recommendation: 'Sitemap is properly configured'
+            recommendation: 'Sitemap is properly configured for discoverability',
+            actionItems: ['Keep sitemap updated with new content', 'Monitor crawl statistics in search console', 'Include priority and lastmod dates'],
+             undefined
           };
           break; // Found a valid sitemap, stop checking
         }
@@ -525,21 +1088,26 @@ export async function POST(request: NextRequest) {
     ];
     
     // Calculate overall score with weighted categories
-    // Refined weights based on benchmark testing
+    // Enhanced weights for expanded AI readiness analysis
     const weights = {
-      // Page-Level Metrics (Most important)
-      'readability': 1.5,         // Important but not overwhelming
-      'heading-structure': 1.4,    // Good signal
-      'meta-tags': 1.2,            // Basic requirement
+      // Content Quality (High importance for AI training)
+      'readability': 1.5,           // Clear, readable content
+      'heading-structure': 1.4,     // Logical information hierarchy
+      'meta-tags': 1.2,             // Basic context and description
+      'faq-structure': 1.3,         // NEW: Q&A pairs are valuable for AI
       
-      // Domain-Level Checks (Moderate importance)
-      'robots-txt': 0.9,
-      'sitemap': 0.8,
-      'llms-txt': 0.3,             // Very rare, minimal weight
+      // Authority & Expertise (Medium-high importance)
+      'topical-authority': 1.2,     // NEW: Expert content signals
+      'content-structure': 1.1,     // NEW: Well-organized knowledge
       
-      // Supporting Metrics
-      'semantic-html': 1.0,
-      'accessibility': 0.9
+      // Technical Foundation (Medium importance)
+      'semantic-html': 1.0,         // Structured markup
+      'accessibility': 0.9,         // Universal access
+      
+      // Domain-Level Signals (Lower importance)
+      'robots-txt': 0.8,            // Reduced weight
+      'sitemap': 0.7,               // Reduced weight  
+      'llms-txt': 0.3               // Specialized but rare
     };
     
     let weightedSum = 0;
@@ -557,9 +1125,9 @@ export async function POST(request: NextRequest) {
     
     let baseScore = Math.round(weightedSum / totalWeight);
     
-    // Boost score for sites with good content signals
+    // Boost score for sites with good content signals (expanded categories)
     const contentSignals = allChecks.filter(c => 
-      ['readability', 'heading-structure', 'meta-tags'].includes(c.id) && c.score >= 60
+      ['readability', 'heading-structure', 'meta-tags', 'faq-structure', 'topical-authority'].includes(c.id) && c.score >= 60
     ).length;
     
     // Add bonus for good content (up to 20 points)

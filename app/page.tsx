@@ -139,17 +139,12 @@ export default function StyleGuidePage() {
               </div>
               
               <div className="flex gap-8">
-                {/* GitHub Template Button */}
-                <a
-                  className="contents"
-                  href="https://github.com/firecrawl/ai-ready-website"
-                  target="_blank"
+                <Link 
+                  href="/reports"
+                  className="inline-flex items-center px-16 py-8 text-body-medium text-accent-black hover:text-heat-100 hover:bg-heat-4 rounded-8 transition-all"
                 >
-                  <ButtonUI variant="tertiary">
-                    <GithubIcon />
-                    Use this Template
-                  </ButtonUI>
-                </a>
+                  Reports
+                </Link>
               </div>
             </div>
           </HeaderWrapper>

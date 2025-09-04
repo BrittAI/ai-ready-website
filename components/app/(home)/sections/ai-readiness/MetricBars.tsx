@@ -13,6 +13,7 @@ interface MetricBarsProps {
     details?: string;
     recommendation?: string;
     actionItems?: string[];
+    codeExample?: string;
   }[];
 }
 
@@ -146,6 +147,25 @@ export default function MetricBars({ metrics }: MetricBarsProps) {
                             </li>
                           ))}
                         </ul>
+                      </div>
+                    )}
+                    {metric.codeExample && (
+                      <div>
+                        <div className="text-label-small text-black-alpha-48 mb-4">Code Example</div>
+                        <div className="relative">
+                          <pre className="bg-accent-black text-white text-mono-small p-12 rounded-6 overflow-x-auto whitespace-pre-wrap">
+                            <code>{metric.codeExample}</code>
+                          </pre>
+                          <button
+                            className="absolute top-8 right-8 px-8 py-4 bg-black-alpha-20 hover:bg-black-alpha-32 text-white text-mono-x-small rounded-4 transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(metric.codeExample || '');
+                            }}
+                          >
+                            Copy
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
