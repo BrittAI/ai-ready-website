@@ -716,8 +716,7 @@ export default function ControlPanel({
                   ['robots-txt', 'sitemap', 'llms-txt'].includes(check.id) ? 'domain' : 'page',
                 details: check.details,
                 recommendation: check.recommendation,
-                actionItems: check.actionItems,
-                codeExample: check.codeExample
+                actionItems: check.actionItems
               }))}
           />
         </motion.div>

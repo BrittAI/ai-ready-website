@@ -121,7 +121,7 @@ function getSpecificRecommendations(checkId: string, issues: any, data?: any): {
       }
       
     case 'meta-tags':
-      const missing = [];
+      const missing: string[] = [];
       if (!data?.hasTitle) missing.push('title');
       if (!data?.hasDescription) missing.push('description');
       if (!data?.hasAuthor) missing.push('author');
@@ -160,16 +160,7 @@ function getSpecificRecommendations(checkId: string, issues: any, data?: any): {
           'Ensure sufficient color contrast',
           'Add lang attribute to html tag',
           'Use semantic HTML elements'
-        ].filter(Boolean),
-        example: `<!-- Image accessibility -->
-<img src="chart.png" alt="Monthly sales increased 25% from January to March 2024">
-
-<!-- Interactive elements -->
-<button aria-label="Close dialog">×</button>
-<input type="search" aria-label="Search products">
-
-<!-- Language declaration -->
-<html lang="en">`
+        ].filter(Boolean)
       };
       
     case 'robots-txt':
@@ -180,26 +171,7 @@ function getSpecificRecommendations(checkId: string, issues: any, data?: any): {
           'Allow access for AI crawlers (GPTBot, CCBot, etc.)',
           'Include sitemap location',
           'Block sensitive directories if needed'
-        ],
-        example: `User-agent: *
-Allow: /
-
-# Allow AI crawlers
-User-agent: GPTBot
-Allow: /
-
-User-agent: CCBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
-
-# Include sitemap
-Sitemap: https://yoursite.com/sitemap.xml
-
-# Block admin areas
-Disallow: /admin/
-Disallow: /private/`
+        ]
       };
       
     case 'sitemap':
@@ -211,20 +183,7 @@ Disallow: /private/`
           'Add priority values for important pages',
           'Submit sitemap to search engines',
           'Reference sitemap in robots.txt'
-        ],
-        example: `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://yoursite.com/</loc>
-    <lastmod>2024-01-15</lastmod>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://yoursite.com/blog/</loc>
-    <lastmod>2024-01-14</lastmod>
-    <priority>0.8</priority>
-  </url>
-</urlset>`
+        ]
       };
       
     case 'llms-txt':
@@ -236,24 +195,7 @@ Disallow: /private/`
           'Include usage permissions and restrictions',
           'Add contact information for questions',
           'Reference your terms of service'
-        ],
-        example: `# llms.txt - AI Usage Guidelines
-
-## Permissions
-- AI systems may crawl and index this site
-- Content may be used for training with attribution
-- Please respect robots.txt directives
-
-## Restrictions  
-- Do not use personal information in training data
-- Respect copyright notices on individual pages
-- Commercial use requires permission
-
-## Contact
-For questions about AI usage: ai-questions@yoursite.com
-
-## Terms
-Full terms: https://yoursite.com/terms`
+        ]
       };
       
     case 'faq-structure':
@@ -873,7 +815,7 @@ async function checkAdditionalFiles(domain: string): Promise<{ robots: CheckResu
           const score = (hasUserAgent ? 60 : 0) + (hasSitemap ? 40 : 0);
           
           const robotsRec = score >= 80 ? 
-            { recommendation: 'Robots.txt properly configured for AI crawlers', actionItems: ['Monitor crawler behavior and update as needed'],  undefined } :
+            { recommendation: 'Robots.txt properly configured for AI crawlers', actionItems: ['Monitor crawler behavior and update as needed'] } :
             getSpecificRecommendations('robots-txt', {}, {});
           
           robotsCheck = {
@@ -884,7 +826,7 @@ async function checkAdditionalFiles(domain: string): Promise<{ robots: CheckResu
             details: `Robots.txt found${hasSitemap ? ` with ${sitemapUrls.length} sitemap reference(s)` : ''}`,
             recommendation: robotsRec.recommendation,
             actionItems: robotsRec.actionItems,
-            example: robotsRec.example
+            // Note: robotsRec may contain additional properties
           };
         }
       })
@@ -915,8 +857,7 @@ async function checkAdditionalFiles(domain: string): Promise<{ robots: CheckResu
                 score: 100,
                 details: `${filename} file found with AI usage guidelines`,
                 recommendation: 'Great! You have defined AI usage permissions',
-                actionItems: ['Review and update AI usage guidelines periodically', 'Monitor for compliance with AI training policies'],
-                 undefined
+                actionItems: ['Review and update AI usage guidelines periodically', 'Monitor for compliance with AI training policies']
               };
             }
           }
@@ -972,7 +913,6 @@ async function checkAdditionalFiles(domain: string): Promise<{ robots: CheckResu
             details: `Valid XML sitemap found${fromRobots ? ' (referenced in robots.txt)' : ` at ${sitemapUrl.replace(cleanUrl, '')}`}`,
             recommendation: 'Sitemap is properly configured for discoverability',
             actionItems: ['Keep sitemap updated with new content', 'Monitor crawl statistics in search console', 'Include priority and lastmod dates'],
-             undefined
           };
           break; // Found a valid sitemap, stop checking
         }
