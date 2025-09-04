@@ -89,6 +89,13 @@ psql $DATABASE_URL < backup.sql
 
 ## Troubleshooting
 
+### Package Manager Issues
+
+If you see lockfile errors during deployment:
+- Railway automatically detects and uses pnpm based on the `pnpm-lock.yaml` file
+- The `railway.json` configuration handles the `--no-frozen-lockfile` flag automatically
+- If issues persist, try deleting and regenerating the lockfile locally
+
 ### Database Connection Issues
 
 If you see database connection errors:
