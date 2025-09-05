@@ -67,6 +67,33 @@ async function initializeTables() {
     )
   `);
 
+  // Users table - authentication and role management
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      name TEXT,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user', -- 'admin' or 'user'
+      email_verified BOOLEAN DEFAULT FALSE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_login DATETIME
+    )
+  `);
+
+  // Sessions table - user sessions for NextAuth
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      session_token TEXT UNIQUE NOT NULL,
+      user_id TEXT NOT NULL,
+      expires DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    )
+  `);
+
   // Analytics table - tracks report engagement
   await db.exec(`
     CREATE TABLE IF NOT EXISTS analytics (
@@ -74,13 +101,15 @@ async function initializeTables() {
       report_id TEXT NOT NULL,
       visitor_id TEXT, -- Anonymous visitor tracking
       lead_id INTEGER, -- If lead captured
+      user_id TEXT, -- If authenticated user
       event_type TEXT NOT NULL, -- 'view', 'section_view', 'pdf_download', etc.
       event_data TEXT, -- JSON for additional data
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       ip_address TEXT,
       user_agent TEXT,
       FOREIGN KEY (report_id) REFERENCES reports (id),
-      FOREIGN KEY (lead_id) REFERENCES leads (id)
+      FOREIGN KEY (lead_id) REFERENCES leads (id),
+      FOREIGN KEY (user_id) REFERENCES users (id)
     )
   `);
 
@@ -90,6 +119,10 @@ async function initializeTables() {
     CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at);
     CREATE INDEX IF NOT EXISTS idx_leads_report_id ON leads(report_id);
     CREATE INDEX IF NOT EXISTS idx_leads_email ON leads(email);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+    CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_analytics_report_id ON analytics(report_id);
     CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics(timestamp);
   `);
@@ -301,4 +334,183 @@ export async function getBranding(id: string) {
   return await db.get(`
     SELECT * FROM branding WHERE id = ?
   `, [id]);
+}
+
+// User authentication functions
+export async function createUser(userData: {
+  id: string;
+  email: string;
+  name?: string;
+  passwordHash: string;
+  role?: 'admin' | 'user';
+}) {
+  if (USE_POSTGRES) {
+    return pgDb.createUser(userData);
+  }
+  const db = await getSQLiteDatabase();
+  
+  await db.run(`
+    INSERT INTO users (id, email, name, password_hash, role, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+  `, [
+    userData.id,
+    userData.email,
+    userData.name || null,
+    userData.passwordHash,
+    userData.role || 'user'
+  ]);
+}
+
+export async function getUserByEmail(email: string) {
+  if (USE_POSTGRES) {
+    return pgDb.getUserByEmail(email);
+  }
+  const db = await getSQLiteDatabase();
+  
+  return await db.get(`
+    SELECT * FROM users WHERE email = ?
+  `, [email]);
+}
+
+export async function getUserById(id: string) {
+  if (USE_POSTGRES) {
+    return pgDb.getUserById(id);
+  }
+  const db = await getSQLiteDatabase();
+  
+  return await db.get(`
+    SELECT * FROM users WHERE id = ?
+  `, [id]);
+}
+
+export async function updateUserLastLogin(userId: string) {
+  if (USE_POSTGRES) {
+    return pgDb.updateUserLastLogin(userId);
+  }
+  const db = await getSQLiteDatabase();
+  
+  await db.run(`
+    UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?
+  `, [userId]);
+}
+
+export async function getAllUsers(limit: number = 50, offset: number = 0) {
+  if (USE_POSTGRES) {
+    return pgDb.getAllUsers(limit, offset);
+  }
+  const db = await getSQLiteDatabase();
+  
+  const users = await db.all(`
+    SELECT id, email, name, role, email_verified, created_at, last_login
+    FROM users
+    ORDER BY created_at DESC
+    LIMIT ? OFFSET ?
+  `, [limit, offset]);
+  
+  return users;
+}
+
+export async function getUsersCount() {
+  if (USE_POSTGRES) {
+    return pgDb.getUsersCount();
+  }
+  const db = await getSQLiteDatabase();
+  
+  const result = await db.get(`
+    SELECT COUNT(*) as count FROM users
+  `);
+  
+  return result?.count || 0;
+}
+
+export async function updateUserRole(userId: string, role: 'admin' | 'user') {
+  if (USE_POSTGRES) {
+    return pgDb.updateUserRole(userId, role);
+  }
+  const db = await getSQLiteDatabase();
+  
+  const result = await db.run(`
+    UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+  `, [role, userId]);
+  
+  return (result.changes ?? 0) > 0;
+}
+
+export async function deleteUser(userId: string) {
+  if (USE_POSTGRES) {
+    return pgDb.deleteUser(userId);
+  }
+  const db = await getSQLiteDatabase();
+  
+  // Delete associated sessions first
+  await db.run(`DELETE FROM sessions WHERE user_id = ?`, [userId]);
+  await db.run(`DELETE FROM analytics WHERE user_id = ?`, [userId]);
+  
+  // Delete the user
+  const result = await db.run(`DELETE FROM users WHERE id = ?`, [userId]);
+  
+  return (result.changes ?? 0) > 0;
+}
+
+// Session management functions
+export async function createSession(sessionData: {
+  id: string;
+  sessionToken: string;
+  userId: string;
+  expires: Date;
+}) {
+  if (USE_POSTGRES) {
+    return pgDb.createSession(sessionData);
+  }
+  const db = await getSQLiteDatabase();
+  
+  await db.run(`
+    INSERT INTO sessions (id, session_token, user_id, expires)
+    VALUES (?, ?, ?, ?)
+  `, [
+    sessionData.id,
+    sessionData.sessionToken,
+    sessionData.userId,
+    sessionData.expires.toISOString()
+  ]);
+}
+
+export async function getSessionByToken(sessionToken: string) {
+  if (USE_POSTGRES) {
+    return pgDb.getSessionByToken(sessionToken);
+  }
+  const db = await getSQLiteDatabase();
+  
+  return await db.get(`
+    SELECT s.*, u.email, u.name, u.role 
+    FROM sessions s
+    JOIN users u ON s.user_id = u.id
+    WHERE s.session_token = ? AND s.expires > CURRENT_TIMESTAMP
+  `, [sessionToken]);
+}
+
+export async function deleteSession(sessionToken: string) {
+  if (USE_POSTGRES) {
+    return pgDb.deleteSession(sessionToken);
+  }
+  const db = await getSQLiteDatabase();
+  
+  const result = await db.run(`
+    DELETE FROM sessions WHERE session_token = ?
+  `, [sessionToken]);
+  
+  return (result.changes ?? 0) > 0;
+}
+
+export async function deleteExpiredSessions() {
+  if (USE_POSTGRES) {
+    return pgDb.deleteExpiredSessions();
+  }
+  const db = await getSQLiteDatabase();
+  
+  const result = await db.run(`
+    DELETE FROM sessions WHERE expires <= CURRENT_TIMESTAMP
+  `);
+  
+  return result.changes ?? 0;
 }
