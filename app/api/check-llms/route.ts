@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import FirecrawlApp from '@mendable/firecrawl-js';
 
-const firecrawl = new FirecrawlApp({
-  apiKey: process.env.FIRECRAWL_API_KEY!
-});
-
 export async function POST(request: NextRequest) {
   try {
     let { url } = await request.json();
@@ -60,22 +56,33 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Also try with Firecrawl to see what it finds
-    try {
-      const scrapeResult = await firecrawl.scrape(`${baseUrl}/llms.txt`, {
-        formats: ['markdown'],
-      });
-      
-      results.firecrawlResult = {
-        success: true,
-        hasContent: !!scrapeResult?.markdown,
-        contentLength: scrapeResult?.markdown?.length || 0,
-        first100Chars: scrapeResult?.markdown?.substring(0, 100)
-      };
-    } catch (e: any) {
+    // Also try with Firecrawl to see what it finds (if API key is available)
+    if (process.env.FIRECRAWL_API_KEY) {
+      try {
+        const firecrawl = new FirecrawlApp({
+          apiKey: process.env.FIRECRAWL_API_KEY
+        });
+        
+        const scrapeResult = await firecrawl.scrape(`${baseUrl}/llms.txt`, {
+          formats: ['markdown'],
+        });
+        
+        results.firecrawlResult = {
+          success: true,
+          hasContent: !!scrapeResult?.markdown,
+          contentLength: scrapeResult?.markdown?.length || 0,
+          first100Chars: scrapeResult?.markdown?.substring(0, 100)
+        };
+      } catch (e: any) {
+        results.firecrawlResult = {
+          success: false,
+          error: e.message
+        };
+      }
+    } else {
       results.firecrawlResult = {
         success: false,
-        error: e.message
+        error: 'FIRECRAWL_API_KEY not configured'
       };
     }
     

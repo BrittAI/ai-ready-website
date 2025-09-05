@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import FirecrawlApp from '@mendable/firecrawl-js';
 
-const firecrawl = new FirecrawlApp({
-  apiKey: process.env.FIRECRAWL_API_KEY!
-});
-
 interface CheckResult {
   id: string;
   label: string;
@@ -980,6 +976,15 @@ export async function POST(request: NextRequest) {
     
     console.log('[AI-READY] Step 1/4: Starting Firecrawl scrape...');
     const scrapeStartTime = Date.now();
+    
+    // Initialize Firecrawl client
+    if (!process.env.FIRECRAWL_API_KEY) {
+      return NextResponse.json({ error: 'Firecrawl API key not configured' }, { status: 500 });
+    }
+    
+    const firecrawl = new FirecrawlApp({
+      apiKey: process.env.FIRECRAWL_API_KEY
+    });
     
     // Scrape the website using Firecrawl v2
     let scrapeResult;
