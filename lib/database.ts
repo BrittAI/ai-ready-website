@@ -201,7 +201,7 @@ export async function deleteReport(id: string) {
   // Then delete the report
   const result = await db.run(`DELETE FROM reports WHERE id = ?`, [id]);
   
-  return result.changes > 0;
+  return (result.changes ?? 0) > 0;
 }
 
 // Lead capture functions
