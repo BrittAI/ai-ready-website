@@ -31,10 +31,15 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get('user-agent') || 'unknown'
     });
 
+    // Generate the base URL dynamically from the request
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('host') || request.headers.get('x-forwarded-host');
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (host ? `${protocol}://${host}` : 'http://localhost:3000');
+
     return NextResponse.json({ 
       success: true, 
       reportId,
-      shareUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/report/${reportId}`
+      shareUrl: `${baseUrl}/report/${reportId}`
     });
 
   } catch (error) {
