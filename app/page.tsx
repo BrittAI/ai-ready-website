@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 // Import shared components
 import Button from "@/components/shared/button/Button";
@@ -31,7 +33,11 @@ import HeaderDropdownWrapper from "@/components/shared/header/Dropdown/Wrapper/W
 import GithubIcon from "@/components/shared/header/Github/_svg/GithubIcon";
 import ButtonUI from "@/components/ui/shadcn/button";
 
+export const dynamic = 'force-dynamic';
+
 export default function StyleGuidePage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [tab, setTab] = useState<Endpoint>(Endpoint.Scrape);
   const [url, setUrl] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -40,6 +46,13 @@ export default function StyleGuidePage() {
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [hasOpenAIKey, setHasOpenAIKey] = useState(false);
   const [urlError, setUrlError] = useState<string>("");
+
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+    }
+  }, [status, router]);
   
   // Check for API keys on mount
   useEffect(() => {
@@ -115,6 +128,20 @@ export default function StyleGuidePage() {
       alert('An error occurred while analyzing the website.');
     }
   };
+
+  // Show loading while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background-base">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-heat-120"></div>
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated (user is being redirected)
+  if (status === 'unauthenticated' || !session) {
+    return null;
+  }
 
   return (
     <HeaderProvider>

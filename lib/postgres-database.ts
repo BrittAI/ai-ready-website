@@ -467,6 +467,53 @@ export async function updateUserRole(userId: string, role: 'admin' | 'user') {
   }
 }
 
+export async function updateUserDetails(userId: string, updates: { name?: string; email?: string; role?: 'admin' | 'user' }) {
+  const client = await pool.connect();
+  
+  try {
+    // Build dynamic query based on what fields are being updated
+    const fields = [];
+    const values = [];
+    let paramIndex = 1;
+    
+    if (updates.name !== undefined) {
+      fields.push(`name = $${paramIndex}`);
+      values.push(updates.name);
+      paramIndex++;
+    }
+    
+    if (updates.email !== undefined) {
+      fields.push(`email = $${paramIndex}`);
+      values.push(updates.email);
+      paramIndex++;
+    }
+    
+    if (updates.role !== undefined) {
+      fields.push(`role = $${paramIndex}`);
+      values.push(updates.role);
+      paramIndex++;
+    }
+    
+    if (fields.length === 0) {
+      return false; // No fields to update
+    }
+    
+    // Add updated_at timestamp
+    fields.push(`updated_at = CURRENT_TIMESTAMP`);
+    
+    // Add userId as the last parameter
+    values.push(userId);
+    
+    const query = `UPDATE users SET ${fields.join(', ')} WHERE id = $${paramIndex}`;
+    
+    const result = await client.query(query, values);
+    
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
 export async function deleteUser(userId: string) {
   const client = await pool.connect();
   

@@ -4,6 +4,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/shadcn/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/shadcn/card'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,7 @@ export default function DashboardPage() {
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-heat-120"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     )
   }
@@ -30,98 +31,252 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-heat-4 to-heat-20">
-      <nav className="bg-white shadow-sm border-b border-heat-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="title-h3 text-heat-200">AI Ready Dashboard</h1>
+    <div className="min-h-screen bg-gray-50/50">
+      {/* Header */}
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="body-medium text-gray-700">
-                Welcome, {session.user.name || session.user.email}
-              </span>
-              {session.user.role === 'admin' && (
-                <Button
-                  onClick={() => router.push('/admin')}
-                  variant="secondary"
-                  className="border-heat-120 text-heat-120 hover:bg-heat-20"
-                >
-                  Admin Panel
-                </Button>
-              )}
+              <div className="hidden sm:flex sm:items-center sm:space-x-4">
+                <span className="text-sm text-muted-foreground">
+                  Welcome, {session.user.name || session.user.email}
+                </span>
+                {session.user.role === 'admin' && (
+                  <Button
+                    onClick={() => router.push('/admin')}
+                    variant="secondary"
+                    size="default"
+                  >
+                    Admin Panel
+                  </Button>
+                )}
+              </div>
               <Button
                 onClick={() => signOut({ callbackUrl: '/' })}
                 variant="secondary"
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                size="default"
               >
-                Sign Out
+                Sign out
               </Button>
             </div>
           </div>
         </div>
-      </nav>
+      </header>
 
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-16 shadow-sm p-8 border border-heat-20">
-          <div className="mb-6">
-            <h2 className="title-h3 text-heat-200 mb-2">Your Account</h2>
-            <p className="body-large text-gray-600">
-              Manage your AI readiness analysis reports and account settings
-            </p>
-          </div>
+      {/* Main Content */}
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold tracking-tight mb-2">
+            Welcome back, {session.user.name || session.user.email?.split('@')[0]}
+          </h2>
+          <p className="text-muted-foreground">
+            Manage your AI readiness analysis reports and account settings.
+          </p>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-gradient-to-r from-heat-20 to-heat-40 rounded-12 p-6 border border-heat-60">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="title-h4 text-heat-200">Recent Reports</h3>
-                <svg className="w-6 h-6 text-heat-120" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <p className="body-medium text-heat-140">
-                View and manage your AI readiness analysis reports
-              </p>
-              <Button 
-                onClick={() => router.push('/reports')}
-                className="mt-4 w-full bg-heat-120 hover:bg-heat-140 text-white rounded-8"
+        {/* Quick Stats */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Reports</CardTitle>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                className="h-4 w-4 text-muted-foreground"
               >
-                View Reports
-              </Button>
-            </div>
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">12</div>
+              <p className="text-xs text-muted-foreground">+2 from last month</p>
+            </CardContent>
+          </Card>
 
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-12 p-6 border border-blue-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="title-h4 text-blue-800">New Analysis</h3>
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg Score</CardTitle>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                className="h-4 w-4 text-muted-foreground"
+              >
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="m22 2-5 10-5-10z" />
+              </svg>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">78%</div>
+              <p className="text-xs text-muted-foreground">+5% from last month</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Best Score</CardTitle>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                className="h-4 w-4 text-muted-foreground"
+              >
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+              </svg>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">94%</div>
+              <p className="text-xs text-muted-foreground">Excellent rating</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Last Analysis</CardTitle>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                className="h-4 w-4 text-muted-foreground"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12,6 12,12 16,14" />
+              </svg>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">2d</div>
+              <p className="text-xs text-muted-foreground">2 days ago</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Action Cards */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* New Analysis Card */}
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  className="h-5 w-5"
+                >
+                  <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-              </div>
-              <p className="body-medium text-blue-700">
+                New Analysis
+              </CardTitle>
+              <CardDescription>
                 Start a new AI readiness analysis for a website
-              </p>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <Button 
+                className="w-full" 
                 onClick={() => router.push('/')}
-                className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-8"
               >
                 Start Analysis
               </Button>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-12 p-6 border border-green-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="title-h4 text-green-800">Account Info</h3>
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          {/* Recent Reports Card */}
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  className="h-5 w-5"
+                >
+                  <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
+                Recent Reports
+              </CardTitle>
+              <CardDescription>
+                View and manage your AI readiness analysis reports
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="secondary" 
+                className="w-full"
+                onClick={() => router.push('/reports')}
+              >
+                View All Reports
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Account Info Card */}
+          <Card className="col-span-1 md:col-span-2 lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  className="h-5 w-5"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                Account Info
+              </CardTitle>
+              <CardDescription>
+                Your account details and settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Email:</span>
+                <span className="text-sm">{session.user.email}</span>
               </div>
-              <div className="space-y-2 body-small text-green-700">
-                <p><strong>Email:</strong> {session.user.email}</p>
-                <p><strong>Role:</strong> {session.user.role}</p>
-                <p><strong>Name:</strong> {session.user.name || 'Not set'}</p>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Role:</span>
+                <span className="text-sm capitalize">{session.user.role}</span>
               </div>
-            </div>
-          </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Name:</span>
+                <span className="text-sm">{session.user.name || 'Not set'}</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
