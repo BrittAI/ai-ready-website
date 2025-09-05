@@ -3,6 +3,7 @@ import { GeistMono } from "geist/font/mono";
 import { Roboto_Mono } from "next/font/google";
 import ColorStyles from "@/components/shared/color-styles/color-styles";
 import Scrollbar from "@/components/ui/scrollbar";
+import Providers from "./providers";
 import "styles/main.css";
 
 const robotoMono = Roboto_Mono({
@@ -32,7 +33,9 @@ export default function RootLayout({
       <body
         className={`${GeistMono.variable} ${robotoMono.variable} font-sans text-accent-black bg-background-base overflow-x-clip`}
       >
-        <main className="overflow-x-clip">{children}</main>
+        <Providers>
+          <main className="overflow-x-clip">{children}</main>
+        </Providers>
         <Scrollbar />
       </body>
     </html>

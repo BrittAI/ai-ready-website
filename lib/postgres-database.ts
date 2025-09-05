@@ -58,6 +58,33 @@ export async function initializePostgresTables() {
       )
     `);
 
+    // Create users table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(255) PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255),
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL DEFAULT 'user',
+        email_verified BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP
+      )
+    `);
+
+    // Create sessions table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id VARCHAR(255) PRIMARY KEY,
+        session_token VARCHAR(255) UNIQUE NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
+        expires TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
     // Create analytics table
     await client.query(`
       CREATE TABLE IF NOT EXISTS analytics (
@@ -65,13 +92,15 @@ export async function initializePostgresTables() {
         report_id VARCHAR(255) NOT NULL,
         visitor_id VARCHAR(255),
         lead_id INTEGER,
+        user_id VARCHAR(255),
         event_type VARCHAR(255) NOT NULL,
         event_data JSONB,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         ip_address VARCHAR(45),
         user_agent TEXT,
         FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE CASCADE,
-        FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
+        FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
       )
     `);
 
@@ -81,6 +110,10 @@ export async function initializePostgresTables() {
       CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at);
       CREATE INDEX IF NOT EXISTS idx_leads_report_id ON leads(report_id);
       CREATE INDEX IF NOT EXISTS idx_leads_email ON leads(email);
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+      CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token);
+      CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS idx_analytics_report_id ON analytics(report_id);
       CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics(timestamp);
     `);
@@ -318,6 +351,203 @@ export async function getBranding(id: string) {
     `, [id]);
     
     return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+// User authentication functions
+export async function createUser(userData: {
+  id: string;
+  email: string;
+  name?: string;
+  passwordHash: string;
+  role?: 'admin' | 'user';
+}) {
+  const client = await pool.connect();
+  
+  try {
+    await client.query(`
+      INSERT INTO users (id, email, name, password_hash, role, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `, [
+      userData.id,
+      userData.email,
+      userData.name || null,
+      userData.passwordHash,
+      userData.role || 'user'
+    ]);
+  } finally {
+    client.release();
+  }
+}
+
+export async function getUserByEmail(email: string) {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(`
+      SELECT * FROM users WHERE email = $1
+    `, [email]);
+    
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getUserById(id: string) {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(`
+      SELECT * FROM users WHERE id = $1
+    `, [id]);
+    
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+export async function updateUserLastLogin(userId: string) {
+  const client = await pool.connect();
+  
+  try {
+    await client.query(`
+      UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1
+    `, [userId]);
+  } finally {
+    client.release();
+  }
+}
+
+export async function getAllUsers(limit: number = 50, offset: number = 0) {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(`
+      SELECT id, email, name, role, email_verified, created_at, last_login
+      FROM users
+      ORDER BY created_at DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+    
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getUsersCount() {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(`
+      SELECT COUNT(*) as count FROM users
+    `);
+    
+    return parseInt(result.rows[0]?.count || '0');
+  } finally {
+    client.release();
+  }
+}
+
+export async function updateUserRole(userId: string, role: 'admin' | 'user') {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(`
+      UPDATE users SET role = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2
+    `, [role, userId]);
+    
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteUser(userId: string) {
+  const client = await pool.connect();
+  
+  try {
+    // Delete associated sessions and analytics first
+    await client.query(`DELETE FROM sessions WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM analytics WHERE user_id = $1`, [userId]);
+    
+    // Delete the user
+    const result = await client.query(`DELETE FROM users WHERE id = $1`, [userId]);
+    
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
+// Session management functions
+export async function createSession(sessionData: {
+  id: string;
+  sessionToken: string;
+  userId: string;
+  expires: Date;
+}) {
+  const client = await pool.connect();
+  
+  try {
+    await client.query(`
+      INSERT INTO sessions (id, session_token, user_id, expires)
+      VALUES ($1, $2, $3, $4)
+    `, [
+      sessionData.id,
+      sessionData.sessionToken,
+      sessionData.userId,
+      sessionData.expires.toISOString()
+    ]);
+  } finally {
+    client.release();
+  }
+}
+
+export async function getSessionByToken(sessionToken: string) {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(`
+      SELECT s.*, u.email, u.name, u.role 
+      FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.session_token = $1 AND s.expires > CURRENT_TIMESTAMP
+    `, [sessionToken]);
+    
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteSession(sessionToken: string) {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(`
+      DELETE FROM sessions WHERE session_token = $1
+    `, [sessionToken]);
+    
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteExpiredSessions() {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(`
+      DELETE FROM sessions WHERE expires <= CURRENT_TIMESTAMP
+    `);
+    
+    return result.rowCount ?? 0;
   } finally {
     client.release();
   }

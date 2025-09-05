@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/shadcn/button'
 
+export const dynamic = 'force-dynamic'
+
 export default function DashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -42,7 +44,7 @@ export default function DashboardPage() {
               {session.user.role === 'admin' && (
                 <Button
                   onClick={() => router.push('/admin')}
-                  variant="outline"
+                  variant="secondary"
                   className="border-heat-120 text-heat-120 hover:bg-heat-20"
                 >
                   Admin Panel
@@ -50,7 +52,7 @@ export default function DashboardPage() {
               )}
               <Button
                 onClick={() => signOut({ callbackUrl: '/' })}
-                variant="outline"
+                variant="secondary"
                 className="border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Sign Out
