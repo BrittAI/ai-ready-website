@@ -472,8 +472,8 @@ export async function updateUserDetails(userId: string, updates: { name?: string
   
   try {
     // Build dynamic query based on what fields are being updated
-    const fields = [];
-    const values = [];
+    const fields: string[] = [];
+    const values: any[] = [];
     let paramIndex = 1;
     
     if (updates.name !== undefined) {

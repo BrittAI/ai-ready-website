@@ -436,6 +436,48 @@ export async function updateUserRole(userId: string, role: 'admin' | 'user') {
   return (result.changes ?? 0) > 0;
 }
 
+export async function updateUserDetails(userId: string, updates: { name?: string; email?: string; role?: 'admin' | 'user' }) {
+  if (USE_POSTGRES) {
+    return pgDb.updateUserDetails(userId, updates);
+  }
+  const db = await getSQLiteDatabase();
+  
+  // Build dynamic query based on what fields are being updated
+  const fields: string[] = [];
+  const values: any[] = [];
+  
+  if (updates.name !== undefined) {
+    fields.push('name = ?');
+    values.push(updates.name);
+  }
+  
+  if (updates.email !== undefined) {
+    fields.push('email = ?');
+    values.push(updates.email);
+  }
+  
+  if (updates.role !== undefined) {
+    fields.push('role = ?');
+    values.push(updates.role);
+  }
+  
+  if (fields.length === 0) {
+    return false; // No fields to update
+  }
+  
+  // Add updated_at timestamp
+  fields.push('updated_at = CURRENT_TIMESTAMP');
+  
+  // Add userId as the last parameter
+  values.push(userId);
+  
+  const query = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+  
+  const result = await db.run(query, values);
+  
+  return (result.changes ?? 0) > 0;
+}
+
 export async function deleteUser(userId: string) {
   if (USE_POSTGRES) {
     return pgDb.deleteUser(userId);
